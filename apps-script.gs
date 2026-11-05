@@ -16,35 +16,54 @@ function doPost(event) {
   if (!id) {
     return json({ error: '这不是 YouTube 影片链接。' });
   }
-  input['类型'] = String(input['类型'] || '').trim() || '练习';
-  input['标题'] = String(input['标题'] || '').trim() || youtubeTitle(input['链接']) || '未命名影片';
-  input['日期'] = String(input['日期'] || '').trim() || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    const sheet = firstSheet();
-    const values = sheet.getDataRange().getValues();
-    const headers = values[0].map((header) => String(header).trim());
-    const linkColumn = headers.indexOf('链接');
-    const index = values.findIndex((cells, rowIndex) => rowIndex > 0 && youtubeId(cells[linkColumn]) === id);
-    const old = index > 0 ? values[index] : [];
-    // A leading ' stores the text as typed, so a 鼓谱 like "-R" never becomes a formula.
-    const row = headers.map((header, column) => {
-      if (header in input) {
-        return "'" + String(input[header]).slice(0, MAX_CELL);
-      }
-      return old[column] === undefined ? '' : old[column];
-    });
-    if (index > 0) {
-      sheet.getRange(index + 1, 1, 1, row.length).setValues([row]);
+    if (input.action === 'delete') {
+      deleteVideo(id);
     } else {
-      sheet.appendRow(row);
+      saveVideo(input, id);
     }
   } finally {
     lock.releaseLock();
   }
   return json({ ok: true, id: id });
+}
+
+function saveVideo(input, id) {
+  input['类型'] = String(input['类型'] || '').trim() || '练习';
+  input['标题'] = String(input['标题'] || '').trim() || youtubeTitle(input['链接']) || '未命名影片';
+  input['日期'] = String(input['日期'] || '').trim() || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const sheet = firstSheet();
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0].map((header) => String(header).trim());
+  const index = rowIndex(values, id);
+  const old = index > 0 ? values[index] : [];
+  // A leading ' stores the text as typed, so a 鼓谱 like "-R" never becomes a formula.
+  const row = headers.map((header, column) => {
+    if (header in input) {
+      return "'" + String(input[header]).slice(0, MAX_CELL);
+    }
+    return old[column] === undefined ? '' : old[column];
+  });
+  if (index > 0) {
+    sheet.getRange(index + 1, 1, 1, row.length).setValues([row]);
+  } else {
+    sheet.appendRow(row);
+  }
+}
+
+function deleteVideo(id) {
+  const sheet = firstSheet();
+  const index = rowIndex(sheet.getDataRange().getValues(), id);
+  if (index > 0) {
+    sheet.deleteRow(index + 1);
+  }
+}
+
+function rowIndex(values, id) {
+  const linkColumn = values[0].map((header) => String(header).trim()).indexOf('链接');
+  return values.findIndex((cells, index) => index > 0 && youtubeId(cells[linkColumn]) === id);
 }
 
 function firstSheet() {

@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>节令鼓 · 鼓法回看</title>
+    <style>
+      :root {
+        --red: #b3261e;
+        --gold: #c8962e;
+        --ink: #2b1d14;
+        --paper: #fbf6ee;
+        --muted: #8a7a6a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      }
+      header {
+        background: var(--red);
+        color: #fff;
+        padding: 16px;
+      }
+      header a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .top {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.3rem;
+        letter-spacing: 0.05em;
+      }
+      .links {
+        display: flex;
+        gap: 8px;
+      }
+      #controls {
+        margin-top: 12px;
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .links a,
+      nav button {
+        border: 1px solid #ffffff99;
+        background: none;
+        color: #fff;
+        padding: 6px 14px;
+        border-radius: 999px;
+        font: inherit;
+        cursor: pointer;
+      }
+      nav button.on {
+        background: #fff;
+        color: var(--red);
+      }
+      #q {
+        width: 100%;
+        padding: 8px 12px;
+        border: 0;
+        border-radius: 8px;
+        font: inherit;
+      }
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      #list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        color: inherit;
+        text-decoration: none;
+        background: #fff;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px #0002;
+      }
+      .card img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+      }
+      .card div {
+        padding: 8px 10px 0;
+        font-weight: 600;
+      }
+      .card small {
+        display: block;
+        padding: 2px 10px 10px;
+      }
+      .card small,
+      .date,
+      .muted {
+        color: var(--muted);
+      }
+      .back {
+        color: var(--red);
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .player iframe {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border: 0;
+        margin-top: 12px;
+        border-radius: 10px;
+        background: #000;
+      }
+      h2 {
+        margin: 12px 0 0;
+      }
+      h3 {
+        border-top: 2px solid var(--gold);
+        padding-top: 12px;
+      }
+      .score .line {
+        display: flex;
+        flex-wrap: wrap;
+        row-gap: 10px;
+        margin-bottom: 10px;
+        padding: 4px 0;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .score .line:hover {
+        background: #fff;
+      }
+      .score p {
+        margin: 16px 0 6px;
+        font-weight: 600;
+      }
+      .bar {
+        display: flex;
+        border-left: 2px solid var(--ink);
+        padding: 0 4px;
+      }
+      .bar:last-child {
+        border-right: 2px solid var(--ink);
+      }
+      .beat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 0 4px;
+      }
+      .beat + .beat {
+        border-left: 1px dashed #d8c8b4;
+      }
+      .beat b {
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .hits {
+        display: flex;
+        gap: 3px;
+      }
+      .hit {
+        display: inline-grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        font-size: 0.85rem;
+        font-weight: 700;
+        line-height: 1;
+        vertical-align: middle;
+      }
+      .core {
+        background: var(--red);
+        color: #fff;
+      }
+      .rim {
+        background: #fff;
+        border: 3px solid var(--gold);
+      }
+      .rest {
+        color: var(--muted);
+      }
+      .hit.now {
+        outline: 3px solid var(--ink);
+        outline-offset: 2px;
+        transform: scale(1.15);
+      }
+      .play-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .hint {
+        flex-basis: 100%;
+        margin: 0;
+        font-size: 0.85rem;
+      }
+      .primary {
+        border: 0;
+        border-radius: 999px;
+        padding: 8px 18px;
+        background: var(--red);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .legend {
+        line-height: 2.4;
+      }
+      details {
+        background: #fff;
+        border-radius: 10px;
+        padding: 10px 14px;
+        line-height: 1.8;
+        margin-bottom: 12px;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 600;
+      }
+      code {
+        background: var(--paper);
+        padding: 1px 6px;
+        border-radius: 4px;
+      }
+      #editor label {
+        display: block;
+        margin-bottom: 12px;
+        font-weight: 600;
+      }
+      #editor input,
+      #editor textarea {
+        display: block;
+        width: 100%;
+        margin-top: 4px;
+        padding: 8px 10px;
+        border: 1px solid #d8c8b4;
+        border-radius: 8px;
+        background: #fff;
+        font: inherit;
+        font-weight: normal;
+      }
+      #editor textarea {
+        font-family: ui-monospace, Menlo, monospace;
+      }
+      #editor input[readonly] {
+        background: var(--paper);
+      }
+      #pad {
+        max-width: 340px;
+        margin: 0 auto 16px;
+      }
+      #pad svg {
+        display: block;
+        width: 100%;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #pad path {
+        cursor: pointer;
+      }
+      .rim-zone {
+        fill: #7a1712;
+      }
+      .core-zone {
+        fill: #f1dfb8;
+      }
+      #pad text {
+        pointer-events: none;
+        font: 700 14px system-ui, sans-serif;
+        text-anchor: middle;
+        dominant-baseline: central;
+      }
+      .rim-key {
+        fill: #fff;
+      }
+      .keys {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .keys input {
+        width: 3em;
+        padding: 4px;
+        text-align: center;
+        font: inherit;
+      }
+      @media (hover: none) {
+        #pad text,
+        #pad details {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="top">
+        <h1><a href="#">节令鼓 · 鼓法回看</a></h1>
+        <div class="links">
+          <a href="#drum">🥁 打鼓</a>
+          <a href="#add">＋ 新增影片</a>
+        </div>
+      </div>
+      <div id="controls">
+        <nav id="tabs"></nav>
+        <input id="q" type="search" placeholder="搜索影片标题" />
+      </div>
+    </header>
+    <main>
+      <div id="list"><p class="muted">载入中…</p></div>
+      <section id="detail" hidden></section>
+
+      <section id="drum-view" hidden>
+        <h2>打鼓</h2>
+        <p class="muted">手机：点鼓芯「咚」，点鼓边「嗒」，两只手指可以一起打。电脑：用键盘打。</p>
+        <div id="pad">
+          <svg viewBox="0 0 200 200" role="img" aria-label="鼓：中间是鼓芯，外圈是鼓边">
+            <path class="rim-zone" data-zone="left-rim" d="M100 4 A96 96 0 0 0 100 196 L100 166 A66 66 0 0 1 100 34 Z" />
+            <path class="rim-zone" data-zone="right-rim" d="M100 4 A96 96 0 0 1 100 196 L100 166 A66 66 0 0 0 100 34 Z" />
+            <path class="core-zone" data-zone="left-core" d="M100 34 A66 66 0 0 0 100 166 Z" />
+            <path class="core-zone" data-zone="right-core" d="M100 34 A66 66 0 0 1 100 166 Z" />
+            <line x1="100" y1="40" x2="100" y2="160" stroke="#0002" stroke-dasharray="4 4" pointer-events="none" />
+            <text class="rim-key" data-key="left-rim" x="19" y="100"></text>
+            <text class="rim-key" data-key="right-rim" x="181" y="100"></text>
+            <text data-key="left-core" x="68" y="100"></text>
+            <text data-key="right-core" x="132" y="100"></text>
+          </svg>
+          <details>
+            <summary>改按键</summary>
+            <div class="keys">
+              <label>左手鼓边 <input data-key-for="left-rim" maxlength="1" /></label>
+              <label>右手鼓边 <input data-key-for="right-rim" maxlength="1" /></label>
+              <label>左手鼓芯 <input data-key-for="left-core" maxlength="1" /></label>
+              <label>右手鼓芯 <input data-key-for="right-core" maxlength="1" /></label>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <form id="editor" hidden>
+        <h2 id="editor-title">新增影片</h2>
+        <label>YouTube 链接 <input name="链接" inputmode="url" required placeholder="https://youtu.be/…" /></label>
+        <label>类型 <input name="类型" list="types" required placeholder="练习、表演…" /></label>
+        <datalist id="types"></datalist>
+        <label>标题 <span class="muted">（留空 = 用 YouTube 上的标题）</span><input name="标题" /></label>
+        <label>日期 <input name="日期" type="date" required /></label>
+        <label>鼓谱 <span class="muted">（可以留空，以后再写）</span><textarea name="鼓谱" rows="8" placeholder="R L RL B | r l rl b"></textarea></label>
+        <div id="preview" class="score"></div>
+        <details>
+          <summary>怎么写鼓谱？</summary>
+          <code>R</code> 右手鼓芯 · <code>L</code> 左手鼓芯 · <code>B</code> 双手鼓芯<br />
+          <code>r</code> 右手鼓边 · <code>l</code> 左手鼓边 · <code>b</code> 双手鼓边<br />
+          <code>-</code> 空拍 · 空格分开每一拍 · <code>|</code> 分开每一小节<br />
+          一拍里写两个字母 = 这一拍打两下，例如 <code>RL</code><br />
+          其他文字（例如「第一段」）会照原样显示。<br />
+          例子：<code>R L RL B | r l rl b</code>
+        </details>
+        <label>团员密码 <input name="passcode" type="password" required autocomplete="off" /></label>
+        <button class="primary">保存</button>
+        &nbsp;<a id="cancel" class="back" href="#">取消</a>
+        <p id="save-status" class="muted"></p>
+      </form>
+    </main>
+
+    <script>
+      const SCRIPT_URL = '';
+      const SCORE_LINE = /^[RLBrlb\-\s|]+$/;
+      const HITS = {
+        R: ['右', 'core'],
+        L: ['左', 'core'],
+        B: ['双', 'core'],
+        r: ['右', 'rim'],
+        l: ['左', 'rim'],
+        b: ['双', 'rim'],
+      };
+      const DEFAULT_KEYS = { 'left-rim': 'f', 'left-core': 'v', 'right-core': 'b', 'right-rim': 'h' };
+
+      const tabs = document.getElementById('tabs');
+      const search = document.getElementById('q');
+      const controls = document.getElementById('controls');
+      const list = document.getElementById('list');
+      const detail = document.getElementById('detail');
+      const drumView = document.getElementById('drum-view');
+      const editor = document.getElementById('editor');
+      const saveStatus = document.getElementById('save-status');
+      const pad = document.getElementById('pad');
+      const keys = { ...DEFAULT_KEYS, ...readSaved('drumKeys', {}) };
+      let rows = [];
+      let tab = '';
+      let bpm = 80;
+      let audio = null;
+      let frame = 0;
+      let padAudio = null;
+
+      showKeys();
+      load();
+
+      tabs.onclick = (event) => {
+        if (event.target.tagName === 'BUTTON') {
+          tab = event.target.textContent;
+          search.value = '';
+          renderList();
+        }
+      };
+      search.oninput = renderList;
+      window.onhashchange = route;
+      detail.onclick = (event) => {
+        const line = event.target.closest('.score .line');
+        if (line) {
+          play(line);
+        } else if (event.target.id === 'play') {
+          if (audio) {
+            stop();
+          } else {
+            play(null);
+          }
+        }
+      };
+      detail.oninput = (event) => {
+        if (event.target.id === 'tempo') {
+          bpm = Number(event.target.value);
+          document.getElementById('bpm').textContent = bpm;
+        }
+      };
+      editor.onsubmit = save;
+      editor.oninput = (event) => {
+        if (event.target.name === '鼓谱') {
+          document.getElementById('preview').innerHTML = renderScore(event.target.value);
+        }
+      };
+      pad.querySelector('svg').onpointerdown = (event) => {
+        const zone = event.target.dataset.zone;
+        if (zone) {
+          event.preventDefault();
+          strike(zone);
+        }
+      };
+      pad.querySelector('.keys').onkeydown = (event) => {
+        const zone = event.target.dataset.keyFor;
+        if (zone && event.key.length === 1) {
+          event.preventDefault();
+          keys[zone] = event.key.toLowerCase();
+          writeSaved('drumKeys', keys);
+          showKeys();
+        }
+      };
+      document.onkeydown = (event) => {
+        if (event.repeat || event.ctrlKey || event.metaKey || event.altKey || !pad.offsetParent || event.target.closest('input, textarea')) {
+          return;
+        }
+        const zone = Object.keys(keys).find((name) => keys[name] === event.key.toLowerCase());
+        if (zone) {
+          event.preventDefault();
+          strike(zone);
+        }
+      };
+
+      async function load() {
+        try {
+          const response = await fetch(SCRIPT_URL || 'videos.json');
+          const data = await response.json();
+          rows = data
+            .map((row) => ({
+              link: String(row['链接'] || '').trim(),
+              type: String(row['类型'] || '').trim() || '其他',
+              title: String(row['标题'] || '').trim() || '未命名影片',
+              date: String(row['日期'] || '').trim(),
+              score: String(row['鼓谱'] || ''),
+            }))
+            .map((row) => ({ ...row, id: youtubeId(row.link) }))
+            .filter((row) => row.id);
+          const types = [...new Set(rows.map((row) => row.type))];
+          rows.sort((first, second) => second.date.localeCompare(first.date));
+          tab = types.includes(tab) ? tab : types[0] || '';
+          tabs.innerHTML = types.map((type) => `<button>${esc(type)}</button>`).join('');
+          document.getElementById('types').innerHTML = types.map((type) => `<option value="${esc(type)}"></option>`).join('');
+          route();
+        } catch (error) {
+          list.innerHTML = '<p class="muted">读不到影片列表，请检查 SCRIPT_URL。</p>';
+        }
+      }
+
+      function route() {
+        stop();
+        const params = new URLSearchParams(location.hash.slice(1));
+        const row = rows.find((item) => item.id === params.get('v'));
+        const editing = rows.find((item) => item.id === params.get('edit'));
+        let view = list;
+        if (row) {
+          view = detail;
+        } else if (params.has('drum')) {
+          view = drumView;
+        } else if (params.has('add') || editing) {
+          view = editor;
+        }
+        for (const section of [list, detail, drumView, editor]) {
+          section.hidden = section !== view;
+        }
+        controls.hidden = view !== list;
+        // Clearing the player also stops the video.
+        detail.innerHTML = '';
+        if (view === list) {
+          renderList();
+          return;
+        }
+        window.scrollTo(0, 0);
+        if (view === detail) {
+          renderDetail(row);
+        } else if (view === drumView) {
+          drumView.append(pad);
+        } else {
+          fillEditor(editing);
+        }
+      }
+
+      function renderList() {
+        const query = search.value.trim().toLowerCase();
+        const shown = rows.filter((row) => (query ? row.title.toLowerCase().includes(query) : row.type === tab));
+        for (const button of tabs.children) {
+          button.classList.toggle('on', !query && button.textContent === tab);
+        }
+        list.innerHTML =
+          shown
+            .map(
+              (row) => `
+          <a class="card" href="#v=${row.id}">
+            <img src="https://i.ytimg.com/vi/${row.id}/mqdefault.jpg" alt="" loading="lazy" />
+            <div>${esc(row.title)}</div>
+            <small>${esc(row.date)}</small>
+          </a>`
+            )
+            .join('') || '<p class="muted">没有找到影片。</p>';
+      }
+
+      function renderDetail(row) {
+        const score = renderScore(row.score);
+        const playBar = score.includes('class="beat"')
+          ? `<div class="play-bar">
+              <button id="play" class="primary">▶ 跟着打</button>
+              <label>速度 <input id="tempo" type="range" min="40" max="160" step="5" value="${bpm}" /> <span id="bpm">${bpm}</span> 拍/分钟</label>
+              <label><input id="loop" type="checkbox" /> 循环</label>
+              <p class="hint muted">点任何一行：从那一行开始。勾「循环」再点一行：一直重复那一行。</p>
+            </div>`
+          : '';
+        detail.innerHTML = `
+          <a class="back" href="#">← 返回列表</a> &nbsp; <a class="back" href="#edit=${row.id}">✎ 编辑</a>
+          <div class="player">
+            <iframe src="https://www.youtube-nocookie.com/embed/${row.id}?playsinline=1" title="${esc(row.title)}"
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>
+          </div>
+          <h2>${esc(row.title)}</h2>
+          <div class="date">${esc(row.date)}</div>
+          <h3>鼓法</h3>
+          ${playBar}
+          <div class="score">${score || '<p class="muted">这个影片还没有鼓谱。按「编辑」可以加。</p>'}</div>
+          <p class="legend">
+            <span class="hit core">右</span> 鼓芯 &nbsp;
+            <span class="hit rim">右</span> 鼓边 &nbsp;
+            双 = 双手同时 &nbsp;
+            <span class="hit rest">·</span> 空拍
+          </p>
+          <h3>打打看</h3>
+          <div id="pad-slot"></div>`;
+        document.getElementById('pad-slot').replaceWith(pad);
+      }
+
+      function fillEditor(row) {
+        const fields = editor.elements;
+        editor.reset();
+        document.getElementById('editor-title').textContent = row ? '编辑影片' : '新增影片';
+        document.getElementById('cancel').href = row ? `#v=${row.id}` : '#';
+        fields['链接'].value = row ? row.link : '';
+        fields['链接'].readOnly = Boolean(row);
+        fields['类型'].value = row ? row.type : tab;
+        fields['标题'].value = row ? row.title : '';
+        fields['日期'].value = row ? row.date : today();
+        fields['鼓谱'].value = row ? row.score : '';
+        fields.passcode.value = readSaved('passcode', '');
+        document.getElementById('preview').innerHTML = renderScore(fields['鼓谱'].value);
+        saveStatus.textContent = '';
+      }
+
+      async function save(event) {
+        event.preventDefault();
+        const data = Object.fromEntries(new FormData(editor));
+        const id = youtubeId(data['链接']);
+        if (!id) {
+          saveStatus.textContent = '这不是 YouTube 影片链接。';
+          return;
+        }
+        if (!SCRIPT_URL) {
+          saveStatus.textContent = '还没设定 SCRIPT_URL，现在不能保存。';
+          return;
+        }
+        writeSaved('passcode', data.passcode);
+        saveStatus.textContent = '保存中…';
+        try {
+          // A plain-text body keeps this a simple request, so Apps Script needs no CORS preflight.
+          const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
+          const result = await response.json();
+          if (result.error) {
+            saveStatus.textContent = result.error;
+            return;
+          }
+          await load();
+          location.hash = `v=${id}`;
+        } catch (error) {
+          saveStatus.textContent = '保存失败，请检查网络再试一次。';
+        }
+      }
+
+      function play(line) {
+        stop();
+        const loop = document.getElementById('loop');
+        const lines = [...detail.querySelectorAll('.score .line')];
+        const range = line && loop.checked ? [line] : lines.slice(line ? lines.indexOf(line) : 0);
+        const beats = range.flatMap((item) => [...item.querySelectorAll('.beat')]);
+        const beatLength = 60 / bpm;
+        const events = [];
+
+        const context = new AudioContext();
+        const start = context.currentTime + 0.1;
+        audio = context;
+        for (let count = 0; count < 4; count++) {
+          drumSound(context, start + count * beatLength, 1500, 0.03, 0.2, 'square');
+        }
+        let end = scheduleRound(context, beats, start + 4 * beatLength, beatLength, events);
+
+        document.getElementById('play').textContent = '■ 停止';
+        let current = null;
+        const step = () => {
+          const now = context.currentTime;
+          if (loop.checked && now >= end - 1) {
+            end = scheduleRound(context, beats, Math.max(end, now + 0.1), beatLength, events);
+          }
+          if (now >= end) {
+            stop();
+            return;
+          }
+          const event = events.findLast((item) => item.time <= now);
+          if (event && event.hit !== current) {
+            current?.classList.remove('now');
+            current = event.hit;
+            current.classList.add('now');
+            current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+          frame = requestAnimationFrame(step);
+        };
+        frame = requestAnimationFrame(step);
+      }
+
+      function stop() {
+        cancelAnimationFrame(frame);
+        if (audio) {
+          audio.close();
+          audio = null;
+        }
+        detail.querySelector('.now')?.classList.remove('now');
+        const button = document.getElementById('play');
+        if (button) {
+          button.textContent = '▶ 跟着打';
+        }
+      }
+
+      function scheduleRound(context, beats, start, beatLength, events) {
+        let time = start;
+        for (const beat of beats) {
+          const hits = beat.querySelectorAll('.hit');
+          hits.forEach((hit, index) => {
+            const at = time + (index * beatLength) / hits.length;
+            const volume = hit.textContent === '双' ? 1 : 0.6;
+            events.push({ time: at, hit });
+            if (hit.classList.contains('core')) {
+              coreSound(context, at, volume);
+            } else if (hit.classList.contains('rim')) {
+              rimSound(context, at, volume);
+            }
+          });
+          time += beatLength;
+        }
+        return time;
+      }
+
+      function strike(zone) {
+        // One context for the pad, made on the first tap or key press because browsers block sound before that.
+        padAudio = padAudio || new AudioContext();
+        padAudio.resume();
+        if (zone.endsWith('core')) {
+          coreSound(padAudio, padAudio.currentTime, 0.8);
+        } else {
+          rimSound(padAudio, padAudio.currentTime, 0.8);
+        }
+        pad.querySelector(`[data-zone="${zone}"]`).animate([{ opacity: 0.5 }, { opacity: 1 }], 160);
+      }
+
+      function showKeys() {
+        for (const zone of Object.keys(DEFAULT_KEYS)) {
+          const key = String(keys[zone]).toUpperCase();
+          pad.querySelector(`text[data-key="${zone}"]`).textContent = key;
+          pad.querySelector(`input[data-key-for="${zone}"]`).value = key;
+        }
+      }
+
+      function coreSound(context, time, volume) {
+        drumSound(context, time, 200, 0.3, volume, 'sine');
+      }
+
+      function rimSound(context, time, volume) {
+        drumSound(context, time, 900, 0.06, volume, 'triangle');
+      }
+
+      function drumSound(context, time, frequency, length, volume, type) {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, time);
+        oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.4, time + length);
+        gain.gain.setValueAtTime(volume, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + length);
+        oscillator.connect(gain).connect(context.destination);
+        oscillator.start(time);
+        oscillator.stop(time + length);
+      }
+
+      function renderScore(text) {
+        return text
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => (SCORE_LINE.test(line) ? `<div class="line">${line.split('|').map(renderBar).join('')}</div>` : `<p>${esc(line)}</p>`))
+          .join('');
+      }
+
+      function renderBar(bar) {
+        const beats = bar.trim().split(/\s+/).filter(Boolean);
+        if (beats.length === 0) {
+          return '';
+        }
+        const cells = beats.map((beat, index) => `<div class="beat"><b>${index + 1}</b><div class="hits">${[...beat].map(renderHit).join('')}</div></div>`);
+        return `<div class="bar">${cells.join('')}</div>`;
+      }
+
+      function renderHit(char) {
+        const hit = HITS[char];
+        return hit ? `<span class="hit ${hit[1]}">${hit[0]}</span>` : '<span class="hit rest">·</span>';
+      }
+
+      function youtubeId(url) {
+        const match = String(url).match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([\w-]{11})/);
+        return match ? match[1] : '';
+      }
+
+      function today() {
+        // The Swedish locale writes dates as YYYY-MM-DD in local time, which a date box needs.
+        return new Date().toLocaleDateString('sv-SE');
+      }
+
+      function readSaved(name, fallback) {
+        try {
+          return JSON.parse(localStorage.getItem(name)) ?? fallback;
+        } catch (error) {
+          return fallback;
+        }
+      }
+
+      function writeSaved(name, value) {
+        try {
+          localStorage.setItem(name, JSON.stringify(value));
+        } catch (error) {
+          // Private browsing can block storage; the setting is then just not remembered.
+        }
+      }
+
+      function esc(text) {
+        return String(text).replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+      }
+    </script>
+  </body>
+</html>

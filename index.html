@@ -351,6 +351,7 @@
       <section id="drum-view" hidden>
         <h2>打鼓</h2>
         <p class="muted">手机：点鼓芯「咚」，点鼓边「嗒」，两只手指可以一起打。电脑：用键盘打。</p>
+        <p><a class="back" href="sound-maker.html">🔊 自己调鼓声 →</a></p>
         <div id="pad">
           <svg viewBox="0 0 200 200" role="img" aria-label="鼓：中间是鼓芯，外圈是鼓边">
             <path class="rim-zone" data-zone="left-rim" d="M100 4 A96 96 0 0 0 100 196 L100 166 A66 66 0 0 1 100 34 Z" />
@@ -401,8 +402,8 @@
       </form>
     </main>
 
+    <script src="drum.js"></script>
     <script>
-      const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQsZ4enf3nVL3ZR4OLdwnHbhY5qFVW41Huh2snBfNvqjQvigUuyOvxjsVHparq6-0kJA/exec';
       const SCORE_LINE = /^[RLBrlb\-\s|]+$/;
       const HITS = {
         R: ['右', 'core'],
@@ -433,6 +434,7 @@
 
       showKeys();
       load();
+      loadSounds();
 
       tabs.onclick = (event) => {
         if (event.target.tagName === 'BUTTON') {
@@ -684,7 +686,7 @@
         const start = context.currentTime + 0.1;
         audio = context;
         for (let count = 0; count < 4; count++) {
-          tone(context, start + count * beatLength, 1500, 1500, 0.03, 0.2, 'square');
+          tone(context, start + count * beatLength, 1500, 1500, 0.03, 0.03, 0.2, 'square');
         }
         let end = scheduleRound(context, beats, start + 4 * beatLength, beatLength, events);
 
@@ -761,50 +763,6 @@
           pad.querySelector(`text[data-key="${zone}"]`).textContent = key;
           pad.querySelector(`input[data-key-for="${zone}"]`).value = key;
         }
-      }
-
-      function coreSound(context, time, volume) {
-        tone(context, time, 150, 90, 0.75, volume * 0.65, 'sine');
-        tone(context, time, 340, 230, 0.2, volume * 0.25, 'sine');
-        noiseBurst(context, time, 0.03, 'lowpass', 1200, volume * 0.3);
-      }
-
-      function rimSound(context, time, volume) {
-        noiseBurst(context, time, 0.06, 'bandpass', 2500, volume * 2);
-        tone(context, time, 1800, 1600, 0.08, volume * 0.5, 'triangle');
-      }
-
-      function tone(context, time, startFrequency, endFrequency, length, volume, type) {
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-        oscillator.type = type;
-        oscillator.frequency.setValueAtTime(startFrequency, time);
-        oscillator.frequency.exponentialRampToValueAtTime(endFrequency, time + Math.min(0.1, length));
-        gain.gain.setValueAtTime(0.0001, time);
-        gain.gain.exponentialRampToValueAtTime(volume, time + 0.004);
-        gain.gain.exponentialRampToValueAtTime(0.0001, time + length);
-        oscillator.connect(gain).connect(context.destination);
-        oscillator.start(time);
-        oscillator.stop(time + length);
-      }
-
-      function noiseBurst(context, time, length, filterType, frequency, volume) {
-        const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * length), context.sampleRate);
-        const samples = buffer.getChannelData(0);
-        for (let index = 0; index < samples.length; index++) {
-          samples[index] = Math.random() * 2 - 1;
-        }
-        const source = context.createBufferSource();
-        const filter = context.createBiquadFilter();
-        const gain = context.createGain();
-        source.buffer = buffer;
-        filter.type = filterType;
-        filter.frequency.value = frequency;
-        filter.Q.value = 2;
-        gain.gain.setValueAtTime(volume, time);
-        gain.gain.exponentialRampToValueAtTime(0.0001, time + length);
-        source.connect(filter).connect(gain).connect(context.destination);
-        source.start(time);
       }
 
       function renderScore(text) {

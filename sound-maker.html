@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>鼓声调音台</title>
+    <style>
+      :root {
+        --red: #b3261e;
+        --gold: #c8962e;
+        --ink: #2b1d14;
+        --paper: #fbf6ee;
+        --muted: #8a7a6a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 16px;
+        background: var(--red);
+        color: #fff;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.3rem;
+      }
+      header a {
+        color: #fff;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin: 12px 0;
+      }
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 8px 16px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .primary {
+        background: var(--red);
+        color: #fff;
+      }
+      .plain {
+        background: #fff;
+        border: 1px solid #d8c8b4;
+        color: var(--ink);
+      }
+      .sounds {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 16px;
+      }
+      .sound {
+        background: #fff;
+        border-radius: 12px;
+        padding: 12px 16px;
+      }
+      .sound h2 {
+        margin: 4px 0 0;
+      }
+      .meter.bad {
+        color: var(--red);
+        font-weight: 700;
+      }
+      fieldset {
+        margin: 12px 0 0;
+        border: 1px solid #e6d9c6;
+        border-radius: 10px;
+      }
+      legend {
+        font-weight: 700;
+      }
+      .field {
+        display: grid;
+        grid-template-columns: 7.5em 1fr 5.5em;
+        align-items: center;
+        gap: 8px;
+        margin: 6px 0;
+        font-size: 0.9rem;
+      }
+      .field input[type='range'] {
+        width: 100%;
+      }
+      .field input[type='number'],
+      .field select {
+        width: 100%;
+        padding: 4px;
+        font: inherit;
+      }
+      .field select {
+        grid-column: 2 / 4;
+      }
+      .save {
+        margin-top: 16px;
+        background: #fff;
+        border-radius: 12px;
+        padding: 12px 16px;
+      }
+      .save input {
+        padding: 8px 10px;
+        border: 1px solid #d8c8b4;
+        border-radius: 8px;
+        font: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🔊 鼓声调音台</h1>
+      <a href="./#drum">← 回打鼓页</a>
+    </header>
+    <main>
+      <p class="muted">
+        每个鼓声由最多 4 个「音层」（有音高的声音）加 1 个「敲击声」（鼓棒打下去的咔声）组成。音量调到 0 = 不用这一层。
+        电脑可以按 V / B 听鼓芯，F / H 听鼓边。
+      </p>
+      <div class="bar">
+        <button class="primary" id="pattern">▶ 节奏：咚 咚 嗒 咚 嗒 嗒</button>
+        <button class="plain" id="reload">恢复全团现在的声音</button>
+        <button class="plain" id="original">恢复原始声音</button>
+        <span id="load-status" class="muted"></span>
+      </div>
+      <div class="sounds">
+        <section class="sound" data-sound="core">
+          <h2>鼓芯 dung</h2>
+          <div class="bar"><button class="primary" data-play="core">▶ 听</button><span class="meter" data-meter="core"></span></div>
+          <div data-controls="core"></div>
+        </section>
+        <section class="sound" data-sound="rim">
+          <h2>鼓边 tak</h2>
+          <div class="bar"><button class="primary" data-play="rim">▶ 听</button><span class="meter" data-meter="rim"></span></div>
+          <div data-controls="rim"></div>
+        </section>
+      </div>
+      <div class="save">
+        <strong>满意了？</strong> 保存以后，全团的网站（打鼓、跟着打）都会用这个鼓声。
+        <div class="bar">
+          <input id="passcode" type="password" placeholder="团员密码" autocomplete="off" />
+          <button class="primary" id="save">保存给全团用</button>
+          <span id="save-status" class="muted"></span>
+        </div>
+      </div>
+    </main>
+
+    <script src="drum.js"></script>
+    <script>
+      const WAVE_NAMES = { sine: '圆滑 sine', triangle: '柔和 triangle', square: '粗 square', sawtooth: '尖 sawtooth' };
+      const FILTER_NAMES = { lowpass: '低沉 lowpass', bandpass: '中间 bandpass', highpass: '尖细 highpass' };
+      const LAYER_FIELDS = [
+        { key: 'wave', label: '波形', options: WAVE_NAMES },
+        { key: 'from', label: '开始音高 Hz', min: 20, max: 4000, step: 1, top: 8000 },
+        { key: 'to', label: '结束音高 Hz', min: 20, max: 4000, step: 1, top: 8000 },
+        { key: 'drop', label: '音高下沉 秒', min: 0.001, max: 1, step: 0.001 },
+        { key: 'length', label: '长度 秒', min: 0.005, max: 3, step: 0.005 },
+        { key: 'volume', label: '音量', min: 0, max: 1, step: 0.01 },
+      ];
+      const NOISE_FIELDS = [
+        { key: 'filter', label: '音色', options: FILTER_NAMES },
+        { key: 'frequency', label: '频率 Hz', min: 50, max: 12000, step: 10 },
+        { key: 'q', label: '尖锐度 Q', min: 0.1, max: 30, step: 0.1 },
+        { key: 'length', label: '长度 秒', min: 0.001, max: 0.5, step: 0.001 },
+        { key: 'volume', label: '音量', min: 0, max: 10, step: 0.05 },
+      ];
+      const KEYS = { v: 'core', b: 'core', f: 'rim', h: 'rim' };
+      const EMPTY_LAYER = { wave: 'sine', from: 200, to: 200, drop: 0.05, length: 0.2, volume: 0 };
+
+      const loadStatus = document.getElementById('load-status');
+      const saveStatus = document.getElementById('save-status');
+      const passcode = document.getElementById('passcode');
+      let draft = null;
+      let context = null;
+
+      passcode.value = readPasscode();
+      loadStatus.textContent = '载入全团现在的声音…';
+      loadSounds().then((loaded) => {
+        loadStatus.textContent = '';
+        setDraft(loaded);
+      });
+
+      document.querySelector('main').addEventListener('input', (event) => {
+        const control = event.target.closest('[data-key]');
+        if (!control) {
+          return;
+        }
+        const part = draft[control.dataset.sound];
+        const target = control.dataset.part === 'noise' ? part.noise : part.layers[control.dataset.index];
+        const value = control.tagName === 'SELECT' ? control.value : Number(control.value);
+        target[control.dataset.key] = value;
+        for (const twin of document.querySelectorAll(`[data-id="${control.dataset.id}"]`)) {
+          if (twin !== control) {
+            twin.value = value;
+          }
+        }
+        updateMeter(control.dataset.sound);
+      });
+      document.querySelector('main').addEventListener('click', (event) => {
+        const name = event.target.dataset.play;
+        if (name) {
+          play(name, 0);
+        }
+      });
+      document.getElementById('pattern').onclick = () => {
+        ['core', 'core', 'rim', 'core', 'rim', 'rim'].forEach((name, index) => play(name, index * 0.4));
+      };
+      document.getElementById('reload').onclick = async () => {
+        loadStatus.textContent = '载入中…';
+        setDraft(await loadSounds());
+        loadStatus.textContent = '已恢复全团现在的声音。';
+      };
+      document.getElementById('original').onclick = () => {
+        setDraft(DEFAULT_SOUNDS);
+        loadStatus.textContent = '已恢复原始声音（还没保存）。';
+      };
+      document.getElementById('save').onclick = save;
+      document.onkeydown = (event) => {
+        const name = KEYS[event.key.toLowerCase()];
+        if (name && !event.repeat && !event.metaKey && !event.ctrlKey && !event.target.closest('input, select')) {
+          play(name, 0);
+        }
+      };
+
+      function setDraft(source) {
+        draft = cleanSounds(source);
+        for (const name of ['core', 'rim']) {
+          while (draft[name].layers.length < MAX_LAYERS) {
+            draft[name].layers.push({ ...EMPTY_LAYER });
+          }
+          renderControls(name);
+          updateMeter(name);
+        }
+      }
+
+      function renderControls(name) {
+        const sound = draft[name];
+        const layers = sound.layers.map(
+          (layer, index) =>
+            `<fieldset><legend>音层 ${index + 1}</legend>${LAYER_FIELDS.map((field) => renderField(name, 'layer', index, field, layer[field.key])).join('')}</fieldset>`
+        );
+        const noise = `<fieldset><legend>敲击声</legend>${NOISE_FIELDS.map((field) => renderField(name, 'noise', 0, field, sound.noise[field.key])).join('')}</fieldset>`;
+        document.querySelector(`[data-controls="${name}"]`).innerHTML = layers.join('') + noise;
+      }
+
+      function renderField(name, part, index, field, value) {
+        const data = `data-sound="${name}" data-part="${part}" data-index="${index}" data-key="${field.key}" data-id="${name}-${part}-${index}-${field.key}"`;
+        if (field.options) {
+          const options = Object.entries(field.options).map(
+            ([option, label]) => `<option value="${option}"${option === value ? ' selected' : ''}>${label}</option>`
+          );
+          return `<label class="field">${field.label}<select ${data}>${options.join('')}</select></label>`;
+        }
+        return `<label class="field">${field.label}
+          <input type="range" ${data} min="${field.min}" max="${field.max}" step="${field.step}" value="${value}" />
+          <input type="number" ${data} min="${field.min}" max="${field.top || field.max}" step="${field.step}" value="${value}" /></label>`;
+      }
+
+      async function updateMeter(name) {
+        const rate = 44100;
+        const sound = cleanSound(draft[name]);
+        const offline = new OfflineAudioContext(1, rate * 3.2, rate);
+        playSound(offline, sound, 0, 1);
+        const samples = (await offline.startRendering()).getChannelData(0);
+        let peak = 0;
+        let last = 0;
+        for (let index = 0; index < samples.length; index++) {
+          const level = Math.abs(samples[index]);
+          peak = Math.max(peak, level);
+          if (level > 0.01) {
+            last = index;
+          }
+        }
+        const meter = document.querySelector(`[data-meter="${name}"]`);
+        const loud = peak > 1;
+        meter.classList.toggle('bad', loud);
+        meter.textContent = `最大音量 ${peak.toFixed(2)}${loud ? '，会破音，请调小音量' : ''} · 听得到约 ${(last / rate).toFixed(2)} 秒`;
+      }
+
+      function play(name, delay) {
+        context = context || new AudioContext();
+        context.resume();
+        playSound(context, cleanSound(draft[name]), context.currentTime + delay, 0.8);
+      }
+
+      async function save() {
+        if (!passcode.value) {
+          saveStatus.textContent = '请先输入团员密码。';
+          return;
+        }
+        writePasscode(passcode.value);
+        saveStatus.textContent = '保存中…';
+        try {
+          const body = JSON.stringify({ action: 'sounds', sounds: cleanSounds(draft), passcode: passcode.value });
+          const response = await fetch(SCRIPT_URL, { method: 'POST', body });
+          const result = await response.json();
+          saveStatus.textContent = result.error || '已保存。大家重新打开网站就会听到新的鼓声。';
+        } catch (error) {
+          saveStatus.textContent = '连不上，请检查网络再试一次。';
+        }
+      }
+
+      function readPasscode() {
+        try {
+          return JSON.parse(localStorage.getItem('passcode')) || '';
+        } catch (error) {
+          return '';
+        }
+      }
+
+      function writePasscode(value) {
+        try {
+          localStorage.setItem('passcode', JSON.stringify(value));
+        } catch (error) {
+          // Private browsing can block storage; the passcode is then just not remembered.
+        }
+      }
+    </script>
+  </body>
+</html>

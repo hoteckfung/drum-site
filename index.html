@@ -261,6 +261,79 @@
         font: inherit;
         cursor: pointer;
       }
+      .recorder {
+        margin: 12px 0;
+        padding: 0 14px 14px;
+        background: #fff;
+        border-radius: 10px;
+      }
+      .segmented {
+        display: inline-flex;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+        border: 1px solid var(--red);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .segmented button {
+        border: 0;
+        padding: 6px 14px;
+        background: none;
+        color: var(--red);
+        font: inherit;
+        cursor: pointer;
+      }
+      .segmented button.on {
+        background: var(--red);
+        color: #fff;
+      }
+      .counter {
+        margin: 8px 0;
+        font-size: 1.6rem;
+        font-weight: 700;
+      }
+      .plain {
+        border: 1px solid #d8c8b4;
+        border-radius: 999px;
+        padding: 6px 14px;
+        background: #fff;
+        font: inherit;
+        cursor: pointer;
+      }
+      #preview > .target {
+        outline: 3px solid var(--gold);
+        outline-offset: 2px;
+      }
+      .take-bar {
+        display: flex;
+        flex-wrap: wrap;
+        row-gap: 6px;
+        margin-bottom: 8px;
+        border-left: 2px solid var(--ink);
+        padding-left: 4px;
+      }
+      .take-beat {
+        display: flex;
+        padding: 0 4px;
+      }
+      .take-beat + .take-beat {
+        border-left: 1px dashed #d8c8b4;
+      }
+      .slot {
+        display: grid;
+        place-items: center;
+        width: 33px;
+        height: 34px;
+        cursor: pointer;
+      }
+      .slot.empty::after {
+        content: '·';
+        color: var(--muted);
+      }
+      .slot.sel .hit {
+        outline: 3px solid var(--ink);
+        outline-offset: 1px;
+      }
       .legend {
         line-height: 2.4;
       }
@@ -408,6 +481,39 @@
         <label>日期 <input name="日期" type="date" required /></label>
         <label>鼓谱 <span class="muted">（可以留空，以后再写）</span><textarea name="鼓谱" rows="8" maxlength="5000" placeholder="R L RL B | r l rl b"></textarea></label>
         <div id="preview" class="score"></div>
+        <section class="recorder">
+          <h3>🥁 用鼓写鼓谱</h3>
+          <p class="muted hint">要改哪里，就在上面的鼓谱预览点那一行（或那一组）；不点 = 加在最后。</p>
+          <p id="rec-target"></p>
+          <div class="segmented" id="rec-rows">
+            <button type="button" data-rec-row="" class="on">不分排</button>
+            <button type="button" data-rec-row="1">第1排</button>
+            <button type="button" data-rec-row="2">第2排</button>
+            <button type="button" data-rec-row="3">第3排</button>
+          </div>
+          <div class="play-bar">
+            <label>速度 <input id="rec-tempo" type="range" min="40" max="160" step="5" value="80" /> <span id="rec-bpm">80</span> 拍/分钟</label>
+            <label>每小节 <select id="rec-beats"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select> 拍</label>
+            <label>最细到 <select id="rec-grid"><option value="1">每拍 1 下</option><option value="2" selected>每拍 2 下</option><option value="3">每拍 3 下</option><option value="4">每拍 4 下</option></select></label>
+          </div>
+          <div id="rec-counter" class="counter">准备好了就按「开始录」</div>
+          <button type="button" id="rec-start" class="primary">● 开始录</button>
+          <div id="rec-pad"></div>
+          <div id="take" hidden>
+            <p class="muted hint">录到的：点一下音符选它，再点空格移过去，或按 ◀ ▶ 移一格。</p>
+            <div id="take-grid"></div>
+            <div class="play-bar">
+              <button type="button" id="take-left" class="plain">◀</button>
+              <button type="button" id="take-right" class="plain">▶</button>
+              <button type="button" id="take-delete" class="plain">🗑 删除</button>
+              <button type="button" id="take-play" class="plain">▶ 听</button>
+              <label>整体移动 <input id="rec-offset" type="range" min="-200" max="200" step="5" value="0" /> <span id="rec-offset-value">0</span> 毫秒</label>
+            </div>
+            <p>会写成：<code id="take-text"></code></p>
+            <button type="button" id="take-write" class="primary">写进鼓谱</button>
+            <span id="take-status" class="muted"></span>
+          </div>
+        </section>
         <details>
           <summary>怎么写鼓谱？</summary>
           <code>R</code> 右手鼓芯 · <code>L</code> 左手鼓芯 · <code>B</code> 双手鼓芯<br />
@@ -514,7 +620,7 @@
         const zone = event.target.dataset.zone;
         if (zone) {
           event.preventDefault();
-          strike(zone);
+          strike(zone, event);
         }
       };
       pad.querySelector('.keys').onkeydown = (event) => {
@@ -533,7 +639,7 @@
         const zone = Object.keys(keys).find((name) => keys[name] === event.key.toLowerCase());
         if (zone) {
           event.preventDefault();
-          strike(zone);
+          strike(zone, event);
         }
       };
 
@@ -564,6 +670,7 @@
 
       function route() {
         stop();
+        resetRecorder();
         const params = new URLSearchParams(location.hash.slice(1));
         const row = rows.find((item) => item.id === params.get('v'));
         const editing = rows.find((item) => item.id === params.get('edit'));
@@ -592,6 +699,8 @@
           drumView.append(pad);
         } else {
           fillEditor(editing);
+          resetRecorder();
+          document.getElementById('rec-pad').append(pad);
         }
       }
 
@@ -825,10 +934,11 @@
         });
       }
 
-      function strike(zone) {
+      function strike(zone, event) {
         // One context for the pad, made on the first tap or key press because browsers block sound before that.
         padAudio = padAudio || new AudioContext();
         padAudio.resume();
+        recordHit(zone, padAudio.currentTime - (performance.now() - event.timeStamp) / 1000);
         if (zone.endsWith('core')) {
           coreSound(padAudio, padAudio.currentTime, 0.8);
         } else {
@@ -846,19 +956,29 @@
       }
 
       function renderScore(text) {
+        return parseBlocks(text)
+          .map((block) => (block.rows ? renderGroup(block.rows) : renderLine(block.line)))
+          .join('');
+      }
+
+      function parseBlocks(text) {
         const blocks = [];
-        for (const line of text.split('\n').map((item) => item.trim()).filter(Boolean)) {
+        text.split('\n').forEach((source, lineIndex) => {
+          const line = source.trim();
+          if (!line) {
+            return;
+          }
           const row = parseRowLine(line);
           const last = blocks[blocks.length - 1];
           if (row && last && last.rows && !last.rows.some((item) => item.name === row.name)) {
-            last.rows.push(row);
+            last.rows.push({ ...row, lineIndex });
           } else if (row) {
-            blocks.push({ rows: [row] });
+            blocks.push({ rows: [{ ...row, lineIndex }] });
           } else {
-            blocks.push({ line });
+            blocks.push({ line, lineIndex });
           }
-        }
-        return blocks.map((block) => (block.rows ? renderGroup(block.rows) : renderLine(block.line))).join('');
+        });
+        return blocks;
       }
 
       function parseRowLine(line) {
@@ -946,5 +1066,6 @@
         return String(text).replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
       }
     </script>
+    <script src="recorder.js"></script>
   </body>
 </html>

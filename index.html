@@ -314,7 +314,16 @@
       }
       .take-beat {
         display: flex;
+        flex-direction: column;
+        align-items: flex-start;
         padding: 0 4px;
+      }
+      .take-beat b {
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .take-slots {
+        display: flex;
       }
       .take-beat + .take-beat {
         border-left: 1px dashed #d8c8b4;
@@ -463,10 +472,10 @@
           <details>
             <summary>改按键</summary>
             <div class="keys">
-              <label>左手鼓边 <input data-key-for="left-rim" maxlength="1" /></label>
-              <label>右手鼓边 <input data-key-for="right-rim" maxlength="1" /></label>
-              <label>左手鼓芯 <input data-key-for="left-core" maxlength="1" /></label>
-              <label>右手鼓芯 <input data-key-for="right-core" maxlength="1" /></label>
+              <label>左手鼓边 <input data-key-for="left-rim" form="drum-keys" maxlength="1" /></label>
+              <label>右手鼓边 <input data-key-for="right-rim" form="drum-keys" maxlength="1" /></label>
+              <label>左手鼓芯 <input data-key-for="left-core" form="drum-keys" maxlength="1" /></label>
+              <label>右手鼓芯 <input data-key-for="right-core" form="drum-keys" maxlength="1" /></label>
             </div>
           </details>
         </div>

@@ -1,6 +1,7 @@
 const ZONE_LETTERS = { 'left-core': 'L', 'right-core': 'R', 'left-rim': 'l', 'right-rim': 'r' };
 const CORE_LETTERS = 'RLB';
 const MAX_SCORE = 5000;
+const MAX_COUNT_IN = 4;
 const IDLE_TEXT = '准备好了就按「开始录」';
 
 const recorder = {
@@ -137,7 +138,7 @@ function startRecording() {
   recorder.shape = shape;
   recorder.beatsPerBar = shape ? shape[0] : Number(beatsInput.value);
   recorder.beatLength = 60 / Number(tempoInput.value);
-  recorder.countIn = recorder.beatsPerBar;
+  recorder.countIn = Math.min(MAX_COUNT_IN, recorder.beatsPerBar);
   recorder.raw = [];
   recorder.hits = [];
   recorder.selected = -1;
@@ -217,7 +218,7 @@ function renderTake() {
           );
           slot += 1;
         }
-        beatCells.push(`<span class="take-beat">${cells.join('')}</span>`);
+        beatCells.push(`<span class="take-beat"><b>${beat + 1}</b><span class="take-slots">${cells.join('')}</span></span>`);
       }
       return `<div class="take-bar">${beatCells.join('')}</div>`;
     })

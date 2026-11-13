@@ -201,6 +201,29 @@
       .rest {
         color: var(--muted);
       }
+      .group .bar {
+        flex-direction: column;
+        gap: 4px;
+      }
+      .strip {
+        display: flex;
+        align-items: flex-end;
+      }
+      .strip .beat {
+        align-items: flex-start;
+      }
+      .strip .hits {
+        min-height: 30px;
+      }
+      .strip.muted {
+        opacity: 0.35;
+      }
+      .row-tag {
+        align-self: center;
+        width: 1.1em;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
       .hit.now {
         outline: 3px solid var(--ink);
         outline-offset: 2px;
@@ -383,7 +406,7 @@
         <datalist id="types"></datalist>
         <label>标题 <span class="muted">（留空 = 用 YouTube 上的标题）</span><input name="标题" /></label>
         <label>日期 <input name="日期" type="date" required /></label>
-        <label>鼓谱 <span class="muted">（可以留空，以后再写）</span><textarea name="鼓谱" rows="8" placeholder="R L RL B | r l rl b"></textarea></label>
+        <label>鼓谱 <span class="muted">（可以留空，以后再写）</span><textarea name="鼓谱" rows="8" maxlength="5000" placeholder="R L RL B | r l rl b"></textarea></label>
         <div id="preview" class="score"></div>
         <details>
           <summary>怎么写鼓谱？</summary>
@@ -392,7 +415,11 @@
           <code>-</code> 空拍 · 空格分开每一拍 · <code>|</code> 分开每一小节<br />
           一拍里写两个字母 = 这一拍打两下，例如 <code>RL</code><br />
           其他文字（例如「第一段」）会照原样显示。<br />
-          例子：<code>R L RL B | r l rl b</code>
+          例子：<code>R L RL B | r l rl b</code><br />
+          几排打不一样时，在行前面写排号，一排一行，连着写：<br />
+          <code>1: R L R L | B - B -</code><br />
+          <code>2: r l r l | B B B -</code><br />
+          这几行会对齐显示，「跟着打」时一起打，也可以选要听哪几排。<code>第1排:</code>、<code>一:</code> 也可以。
         </details>
         <label>团员密码 <input name="passcode" type="password" required autocomplete="off" /></label>
         <button class="primary">保存</button>
@@ -405,6 +432,8 @@
     <script src="drum.js"></script>
     <script>
       const SCORE_LINE = /^[RLBrlb\-\s|]+$/;
+      const ROW_LINE = /^(?:第)?([1-9一二三四五六])(?:排)?\s*[:：]\s*(.*)$/;
+      const ROW_NUMBERS = { 一: '1', 二: '2', 三: '3', 四: '4', 五: '5', 六: '6' };
       const HITS = {
         R: ['右', 'core'],
         L: ['左', 'core'],
@@ -461,6 +490,12 @@
         if (event.target.id === 'tempo') {
           bpm = Number(event.target.value);
           document.getElementById('bpm').textContent = bpm;
+        }
+        const row = event.target.dataset.rowToggle;
+        if (row) {
+          for (const strip of detail.querySelectorAll(`.strip[data-row="${row}"]`)) {
+            strip.classList.toggle('muted', !event.target.checked);
+          }
         }
       };
       editor.onsubmit = save;
@@ -581,6 +616,7 @@
               <button id="play" class="primary">▶ 跟着打</button>
               <label>速度 <input id="tempo" type="range" min="40" max="160" step="5" value="${bpm}" /> <span id="bpm">${bpm}</span> 拍/分钟</label>
               <label><input id="loop" type="checkbox" /> 循环</label>
+              <span id="row-toggles"></span>
               <p class="hint muted">点任何一行：从那一行开始。勾「循环」再点一行：一直重复那一行。</p>
             </div>`
           : '';
@@ -604,6 +640,11 @@
           <h3>打打看</h3>
           <div id="pad-slot"></div>`;
         document.getElementById('pad-slot').replaceWith(pad);
+        const rowNames = [...new Set([...detail.querySelectorAll('.strip')].map((strip) => strip.dataset.row))].sort();
+        const toggles = document.getElementById('row-toggles');
+        if (toggles) {
+          toggles.innerHTML = rowNames.map((name) => `<label><input type="checkbox" data-row-toggle="${name}" checked /> 第${name}排</label>`).join(' ');
+        }
       }
 
       function fillEditor(row) {
@@ -678,7 +719,7 @@
         const loop = document.getElementById('loop');
         const lines = [...detail.querySelectorAll('.score .line')];
         const range = line && loop.checked ? [line] : lines.slice(line ? lines.indexOf(line) : 0);
-        const beats = range.flatMap((item) => [...item.querySelectorAll('.beat')]);
+        const steps = range.flatMap(lineSteps);
         const beatLength = 60 / bpm;
         const events = [];
 
@@ -688,26 +729,39 @@
         for (let count = 0; count < 4; count++) {
           tone(context, start + count * beatLength, 1500, 1500, 0.03, 0.03, 0.2, 'square');
         }
-        let end = scheduleRound(context, beats, start + 4 * beatLength, beatLength, events);
+        let end = scheduleRound(context, steps, start + 4 * beatLength, beatLength, events);
 
         document.getElementById('play').textContent = '■ 停止';
-        let current = null;
+        let current = new Set();
         const step = () => {
           const now = context.currentTime;
           if (loop.checked && now >= end - 1) {
-            end = scheduleRound(context, beats, Math.max(end, now + 0.1), beatLength, events);
+            end = scheduleRound(context, steps, Math.max(end, now + 0.1), beatLength, events);
           }
           if (now >= end) {
             stop();
             return;
           }
-          const event = events.findLast((item) => item.time <= now);
-          if (event && event.hit !== current) {
-            current?.classList.remove('now');
-            current = event.hit;
-            current.classList.add('now');
-            current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          const latest = new Map();
+          for (const event of events) {
+            if (event.time <= now && now < event.until) {
+              latest.set(event.row, event.hit);
+            }
           }
+          const next = new Set(latest.values());
+          for (const hit of current) {
+            if (!next.has(hit)) {
+              hit.classList.remove('now');
+            }
+          }
+          const added = [...next].filter((hit) => !current.has(hit));
+          for (const hit of added) {
+            hit.classList.add('now');
+          }
+          if (added.length > 0) {
+            added[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+          current = next;
           frame = requestAnimationFrame(step);
         };
         frame = requestAnimationFrame(step);
@@ -719,30 +773,50 @@
           audio.close();
           audio = null;
         }
-        detail.querySelector('.now')?.classList.remove('now');
+        for (const hit of detail.querySelectorAll('.now')) {
+          hit.classList.remove('now');
+        }
         const button = document.getElementById('play');
         if (button) {
           button.textContent = '▶ 跟着打';
         }
       }
 
-      function scheduleRound(context, beats, start, beatLength, events) {
+      function scheduleRound(context, steps, start, beatLength, events) {
         let time = start;
-        for (const beat of beats) {
-          const hits = beat.querySelectorAll('.hit');
-          hits.forEach((hit, index) => {
-            const at = time + (index * beatLength) / hits.length;
-            const volume = hit.textContent === '双' ? 1 : 0.6;
-            events.push({ time: at, hit });
-            if (hit.classList.contains('core')) {
-              coreSound(context, at, volume);
-            } else if (hit.classList.contains('rim')) {
-              rimSound(context, at, volume);
-            }
-          });
+        for (const beats of steps) {
+          const sounding = beats.filter((beat) => !beat.closest('.muted')).length;
+          for (const beat of beats) {
+            const strip = beat.closest('.strip');
+            const silent = Boolean(beat.closest('.muted'));
+            const hits = beat.querySelectorAll('.hit');
+            hits.forEach((hit, index) => {
+              const at = time + (index * beatLength) / hits.length;
+              const volume = (hit.textContent === '双' ? 1 : 0.6) / Math.max(1, sounding);
+              events.push({ time: at, until: time + beatLength, row: strip ? strip.dataset.row : '', hit });
+              if (silent) {
+                return;
+              }
+              if (hit.classList.contains('core')) {
+                coreSound(context, at, volume);
+              } else if (hit.classList.contains('rim')) {
+                rimSound(context, at, volume);
+              }
+            });
+          }
           time += beatLength;
         }
         return time;
+      }
+
+      function lineSteps(line) {
+        if (!line.classList.contains('group')) {
+          return [...line.querySelectorAll('.beat')].map((beat) => [beat]);
+        }
+        return [...line.querySelectorAll('.bar')].flatMap((bar) => {
+          const strips = [...bar.querySelectorAll('.strip')].map((strip) => [...strip.querySelectorAll('.beat')]);
+          return strips[0].map((beat, index) => strips.map((beats) => beats[index]));
+        });
       }
 
       function strike(zone) {
@@ -766,21 +840,69 @@
       }
 
       function renderScore(text) {
-        return text
-          .split('\n')
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .map((line) => (SCORE_LINE.test(line) ? `<div class="line">${line.split('|').map(renderBar).join('')}</div>` : `<p>${esc(line)}</p>`))
-          .join('');
+        const blocks = [];
+        for (const line of text.split('\n').map((item) => item.trim()).filter(Boolean)) {
+          const row = parseRowLine(line);
+          const last = blocks[blocks.length - 1];
+          if (row && last && last.rows && !last.rows.some((item) => item.name === row.name)) {
+            last.rows.push(row);
+          } else if (row) {
+            blocks.push({ rows: [row] });
+          } else {
+            blocks.push({ line });
+          }
+        }
+        return blocks.map((block) => (block.rows ? renderGroup(block.rows) : renderLine(block.line))).join('');
+      }
+
+      function parseRowLine(line) {
+        const match = line.match(ROW_LINE);
+        if (!match || !SCORE_LINE.test(match[2])) {
+          return null;
+        }
+        const bars = match[2]
+          .split('|')
+          .map(splitBeats)
+          .filter((beats) => beats.length > 0);
+        return { name: ROW_NUMBERS[match[1]] || match[1], bars };
+      }
+
+      function renderLine(line) {
+        return SCORE_LINE.test(line) ? `<div class="line">${line.split('|').map(renderBar).join('')}</div>` : `<p>${esc(line)}</p>`;
       }
 
       function renderBar(bar) {
-        const beats = bar.trim().split(/\s+/).filter(Boolean);
+        const beats = splitBeats(bar);
         if (beats.length === 0) {
           return '';
         }
-        const cells = beats.map((beat, index) => `<div class="beat"><b>${index + 1}</b><div class="hits">${[...beat].map(renderHit).join('')}</div></div>`);
-        return `<div class="bar">${cells.join('')}</div>`;
+        return `<div class="bar">${beats.map((beat, index) => renderBeat(beat, index, true, 0)).join('')}</div>`;
+      }
+
+      function renderGroup(rows) {
+        const barCount = Math.max(...rows.map((row) => row.bars.length));
+        const bars = [];
+        for (let barIndex = 0; barIndex < barCount; barIndex++) {
+          const beatsOf = (row) => row.bars[barIndex] || [];
+          const beatCount = Math.max(...rows.map((row) => beatsOf(row).length));
+          const widths = Array.from({ length: beatCount }, (item, beatIndex) => Math.max(1, ...rows.map((row) => [...(beatsOf(row)[beatIndex] || '')].length)));
+          const strips = rows.map((row, rowIndex) => {
+            const beats = widths.map((width, beatIndex) => renderBeat(beatsOf(row)[beatIndex] || '', beatIndex, rowIndex === 0, width));
+            return `<div class="strip" data-row="${row.name}"><span class="row-tag">${row.name}</span>${beats.join('')}</div>`;
+          });
+          bars.push(`<div class="bar">${strips.join('')}</div>`);
+        }
+        return `<div class="line group">${bars.join('')}</div>`;
+      }
+
+      function renderBeat(beat, index, numbered, width) {
+        const style = width ? ` style="min-width: ${width * 33 + 6}px"` : '';
+        const number = numbered ? `<b>${index + 1}</b>` : '';
+        return `<div class="beat"${style}>${number}<div class="hits">${[...beat].map(renderHit).join('')}</div></div>`;
+      }
+
+      function splitBeats(bar) {
+        return bar.trim().split(/\s+/).filter(Boolean);
       }
 
       function renderHit(char) {

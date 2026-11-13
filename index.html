@@ -419,7 +419,8 @@
           几排打不一样时，在行前面写排号，一排一行，连着写：<br />
           <code>1: R L R L | B - B -</code><br />
           <code>2: r l r l | B B B -</code><br />
-          这几行会对齐显示，「跟着打」时一起打，也可以选要听哪几排。<code>第1排:</code>、<code>一:</code> 也可以。
+          这几行会对齐显示，「跟着打」时一起打，也可以选要听哪几排。<code>第1排:</code>、<code>一:</code> 也可以。<br />
+          每一排只写一行；下一段要再从 <code>1:</code> 开始写（排号重复 = 新的一段）。
         </details>
         <label>团员密码 <input name="passcode" type="password" required autocomplete="off" /></label>
         <button class="primary">保存</button>
@@ -459,6 +460,7 @@
       let bpm = 80;
       let audio = null;
       let frame = 0;
+      let playingFrom = null;
       let padAudio = null;
 
       showKeys();
@@ -495,6 +497,9 @@
         if (row) {
           for (const strip of detail.querySelectorAll(`.strip[data-row="${row}"]`)) {
             strip.classList.toggle('muted', !event.target.checked);
+          }
+          if (audio) {
+            play(playingFrom);
           }
         }
       };
@@ -716,6 +721,7 @@
 
       function play(line) {
         stop();
+        playingFrom = line;
         const loop = document.getElementById('loop');
         const lines = [...detail.querySelectorAll('.score .line')];
         const range = line && loop.checked ? [line] : lines.slice(line ? lines.indexOf(line) : 0);
@@ -785,7 +791,7 @@
       function scheduleRound(context, steps, start, beatLength, events) {
         let time = start;
         for (const beats of steps) {
-          const sounding = beats.filter((beat) => !beat.closest('.muted')).length;
+          const sounding = beats.filter((beat) => !beat.closest('.muted') && beat.querySelector('.core, .rim')).length;
           for (const beat of beats) {
             const strip = beat.closest('.strip');
             const silent = Boolean(beat.closest('.muted'));
